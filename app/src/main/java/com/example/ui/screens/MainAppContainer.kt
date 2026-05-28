@@ -645,7 +645,8 @@ fun LandingPricesSection(fuelStats: List<FuelType>, viewModel: FuelFlowViewModel
         }
 
         fuelStats.forEach { fuel ->
-            val ratio = (fuel.availableLiters / fuel.capacity).toFloat()
+            val capacitySafe = if (fuel.capacity > 0) fuel.capacity else 10000.0
+            val ratio = ((fuel.availableLiters / capacitySafe).toFloat()).coerceIn(0f, 1f)
             val tintColor = if (ratio < 0.3f) AlertRed else if (ratio < 0.6f) AlertYellow else AlertGreen
 
             Card(
@@ -1093,6 +1094,49 @@ fun AdminDashboardMainView(
                         onProfileClick = { onScreenChange(AppScreen.Profile) },
                         viewModel = viewModel
                     )
+                },
+                bottomBar = {
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 8.dp,
+                        modifier = Modifier.height(72.dp)
+                    ) {
+                        val items = listOf(
+                            Triple("Dashboard", AppScreen.Dashboard, Icons.Default.Dashboard),
+                            Triple("POS", AppScreen.POS, Icons.Default.PointOfSale),
+                            Triple("Tanks", AppScreen.Fuel, Icons.Default.LocalGasStation),
+                            Triple("Pumps", AppScreen.Pumps, Icons.Default.ToggleOn),
+                            Triple("Settings", AppScreen.Settings, Icons.Default.Settings)
+                        )
+                        items.forEach { (label, screen, icon) ->
+                            val isSelected = currentScreen == screen
+                            NavigationBarItem(
+                                selected = isSelected,
+                                onClick = { onScreenChange(screen) },
+                                label = {
+                                    Text(
+                                        label,
+                                        fontSize = 10.sp,
+                                        fontWeight = if (isSelected) FontWeight.Black else FontWeight.Bold
+                                    )
+                                },
+                                icon = {
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = label,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = Color.Black,
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    indicatorColor = FuelAmber,
+                                    unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                    unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            )
+                        }
+                    }
                 }
             ) { paddingValues ->
                 Box(
@@ -1354,7 +1398,10 @@ fun AdminDashboardView(viewModel: FuelFlowViewModel, onNavigateToPOS: () -> Unit
     val totalSalesCash = transactions.sumOf { it.totalPrice }
     val totalLiters = transactions.sumOf { it.liters }
     val activePumpsCount = pumps.count { it.status == "Active" }
-    val lowFuelWarningsCount = fuelTypes.count { (it.availableLiters / it.capacity) < 0.3 }
+    val lowFuelWarningsCount = fuelTypes.count { 
+        val cap = if (it.capacity > 0) it.capacity else 10000.0
+        (it.availableLiters / cap) < 0.3 
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -1540,7 +1587,8 @@ fun AdminDashboardView(viewModel: FuelFlowViewModel, onNavigateToPOS: () -> Unit
         }
 
         items(fuelTypes) { fuel ->
-            val ratio = (fuel.availableLiters / fuel.capacity).toFloat()
+            val capacitySafe = if (fuel.capacity > 0) fuel.capacity else 10000.0
+            val ratio = ((fuel.availableLiters / capacitySafe).toFloat()).coerceIn(0f, 1f)
             val trackingColor = if (ratio < 0.25f) AlertRed else if (ratio < 0.55f) AlertYellow else AlertGreen
 
             Card(
@@ -2255,7 +2303,8 @@ fun FuelManagementView(viewModel: FuelFlowViewModel) {
 
                     // Display ratio bar charts
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        val ratio = (fuel.availableLiters / fuel.capacity).toFloat()
+                        val capacitySafe = if (fuel.capacity > 0) fuel.capacity else 10000.0
+                        val ratio = ((fuel.availableLiters / capacitySafe).toFloat()).coerceIn(0f, 1f)
                         val color = if (ratio < 0.3f) AlertRed else AlertGreen
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Available Inventory Volume: ${String.format("%.1f", fuel.availableLiters)} / ${fuel.capacity.toInt()} L", fontSize = 10.sp)
