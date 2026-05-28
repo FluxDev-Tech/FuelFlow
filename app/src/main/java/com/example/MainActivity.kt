@@ -1,0 +1,25 @@
+package com.example
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
+import com.example.ui.screens.MainAppContainer
+import com.example.ui.viewmodel.FuelFlowViewModel
+import com.example.ui.viewmodel.FuelFlowViewModelFactory
+
+class MainActivity : ComponentActivity() {
+    
+    private val viewModel: FuelFlowViewModel by viewModels {
+        FuelFlowViewModelFactory((application as FuelFlowApplication).repository)
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            MainAppContainer(viewModel = viewModel)
+        }
+    }
+}

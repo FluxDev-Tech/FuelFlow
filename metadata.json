@@ -1,0 +1,6 @@
+{
+  "name": "FuelFlow Pro",
+  "description": "Premium industrial gas station and fuel retail dashboard featuring multi-role authentication, real-time tank measurements, pump switches, live POS registers, shift logs, and analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
