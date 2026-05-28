@@ -1042,9 +1042,9 @@ fun AdminDashboardMainView(
     onScreenChange: (AppScreen) -> Unit,
     viewModel: FuelFlowViewModel
 ) {
-    val drawerState = remember { mutableStateOf(false) }
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val settings by viewModel.appSettings.collectAsStateWithLifecycle()
+    val isMoreMenuOpen = remember { mutableStateOf(false) }
     
     // Auto return to landing if currentUser is null
     if (currentUser == null) {
@@ -1054,80 +1054,71 @@ fun AdminDashboardMainView(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val isTablet = maxWidth >= 720.dp
+
         Row(modifier = Modifier.fillMaxSize()) {
             
-            // Side navigation panel for large devices or simulation panel helper
-            // We implement an adaptive drawer logic
-            AnimatedVisibility(
-                visible = drawerState.value,
-                enter = slideInHorizontally(animationSpec = tween(250)),
-                exit = slideOutHorizontally(animationSpec = tween(200)),
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(260.dp)
-                    .zOrder(10f)
-            ) {
-                AdminSidebarContent(
-                    currentUser = currentUser,
-                    currentScreen = currentScreen,
-                    onScreenSelect = {
-                        onScreenChange(it)
-                        drawerState.value = false
+            // SIDE NAVIGATION RAIL: Executed ONLY on wider screens (tablet/landscape)
+            if (isTablet) {
+                NavigationRail(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    header = {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(vertical = 16.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .background(FuelAmber, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.LocalGasStation,
+                                    contentDescription = null,
+                                    tint = Color.Black,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = (settings?.stationName ?: "FuelFlow").uppercase(),
+                                fontWeight = FontWeight.Black,
+                                fontSize = 9.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
+                        }
                     },
-                    onLogout = {
-                        viewModel.performLogout()
-                        onScreenChange(AppScreen.Landing)
-                    },
-                    stationName = settings?.stationName ?: "FuelFlow Pro"
-                )
-            }
-
-            // Central Workspace Viewport
-            Scaffold(
-                topBar = {
-                    AdminTopAppBar(
-                        currentUser = currentUser,
-                        stationName = settings?.stationName ?: "FuelFlow Pro",
-                        onMenuClick = { drawerState.value = !drawerState.value },
-                        unreadCount = viewModel.unreadNotificationsCount.collectAsStateWithLifecycle().value,
-                        onProfileClick = { onScreenChange(AppScreen.Profile) },
-                        viewModel = viewModel
+                    modifier = Modifier.fillMaxHeight().width(88.dp)
+                ) {
+                    val navItems = listOf(
+                        Triple("Dashboard", AppScreen.Dashboard, Icons.Default.Dashboard),
+                        Triple("POS", AppScreen.POS, Icons.Default.PointOfSale),
+                        Triple("Tanks", AppScreen.Fuel, Icons.Default.LocalGasStation),
+                        Triple("Pumps", AppScreen.Pumps, Icons.Default.ToggleOn),
+                        Triple("Staff", AppScreen.Employees, Icons.Default.People),
+                        Triple("Loyalty", AppScreen.Customers, Icons.Default.CardMembership),
+                        Triple("Analytics", AppScreen.Reports, Icons.Default.BarChart),
+                        Triple("Settings", AppScreen.Settings, Icons.Default.Settings)
                     )
-                },
-                bottomBar = {
-                    NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        tonalElevation = 8.dp,
-                        modifier = Modifier.height(72.dp)
+
+                    Column(
+                        modifier = Modifier.fillMaxHeight().weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        val items = listOf(
-                            Triple("Dashboard", AppScreen.Dashboard, Icons.Default.Dashboard),
-                            Triple("POS", AppScreen.POS, Icons.Default.PointOfSale),
-                            Triple("Tanks", AppScreen.Fuel, Icons.Default.LocalGasStation),
-                            Triple("Pumps", AppScreen.Pumps, Icons.Default.ToggleOn),
-                            Triple("Settings", AppScreen.Settings, Icons.Default.Settings)
-                        )
-                        items.forEach { (label, screen, icon) ->
+                        navItems.forEach { (label, screen, icon) ->
                             val isSelected = currentScreen == screen
-                            NavigationBarItem(
+                            NavigationRailItem(
                                 selected = isSelected,
                                 onClick = { onScreenChange(screen) },
-                                label = {
-                                    Text(
-                                        label,
-                                        fontSize = 10.sp,
-                                        fontWeight = if (isSelected) FontWeight.Black else FontWeight.Bold
-                                    )
-                                },
-                                icon = {
-                                    Icon(
-                                        imageVector = icon,
-                                        contentDescription = label,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                },
-                                colors = NavigationBarItemDefaults.colors(
+                                icon = { Icon(icon, contentDescription = label) },
+                                label = { Text(label, fontSize = 9.sp, fontWeight = FontWeight.Bold) },
+                                colors = NavigationRailItemDefaults.colors(
                                     selectedIconColor = Color.Black,
                                     selectedTextColor = MaterialTheme.colorScheme.primary,
                                     indicatorColor = FuelAmber,
@@ -1137,6 +1128,91 @@ fun AdminDashboardMainView(
                             )
                         }
                     }
+
+                    // Logout Action button at bottom of Rail
+                    NavigationRailItem(
+                        selected = false,
+                        onClick = {
+                            viewModel.performLogout()
+                            onScreenChange(AppScreen.Landing)
+                        },
+                        icon = { Icon(Icons.Default.ExitToApp, contentDescription = "Log Out") },
+                        label = { Text("Log Out", fontSize = 9.sp, color = MaterialTheme.colorScheme.error) },
+                        colors = NavigationRailItemDefaults.colors(
+                            unselectedIconColor = MaterialTheme.colorScheme.error
+                        )
+                    )
+                }
+            }
+
+            // Central Work Area Scaffold
+            Scaffold(
+                topBar = {
+                    AdminTopAppBar(
+                        currentUser = currentUser,
+                        stationName = settings?.stationName ?: "FuelFlow Pro",
+                        unreadCount = viewModel.unreadNotificationsCount.collectAsStateWithLifecycle().value,
+                        onProfileClick = { onScreenChange(AppScreen.Profile) },
+                        viewModel = viewModel
+                    )
+                },
+                bottomBar = {
+                    // Show Bottom Navigation ONLY on non-tablet devices
+                    if (!isTablet) {
+                        NavigationBar(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            tonalElevation = 8.dp,
+                            modifier = Modifier.height(72.dp)
+                        ) {
+                            val items = listOf(
+                                Triple("Dashboard", AppScreen.Dashboard, Icons.Default.Dashboard),
+                                Triple("POS", AppScreen.POS, Icons.Default.PointOfSale),
+                                Triple("Tanks", AppScreen.Fuel, Icons.Default.LocalGasStation),
+                                Triple("Pumps", AppScreen.Pumps, Icons.Default.ToggleOn),
+                                Triple("More", AppScreen.Settings, Icons.Default.Menu) // Settings serves as fallback, but triggers custom 'More' popup
+                            )
+                            items.forEach { (label, screen, icon) ->
+                                // Custom handling for "More" highlighting
+                                val isSelected = if (label == "More") {
+                                    currentScreen in listOf(AppScreen.Employees, AppScreen.Customers, AppScreen.Reports, AppScreen.Settings, AppScreen.Profile)
+                                } else {
+                                    currentScreen == screen
+                                }
+
+                                NavigationBarItem(
+                                    selected = isSelected,
+                                    onClick = {
+                                        if (label == "More") {
+                                            isMoreMenuOpen.value = true
+                                        } else {
+                                            onScreenChange(screen)
+                                        }
+                                    },
+                                    label = {
+                                        Text(
+                                            label,
+                                            fontSize = 10.sp,
+                                            fontWeight = if (isSelected) FontWeight.Black else FontWeight.Bold
+                                        )
+                                    },
+                                    icon = {
+                                        Icon(
+                                            imageVector = icon,
+                                            contentDescription = label,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    },
+                                    colors = NavigationBarItemDefaults.colors(
+                                        selectedIconColor = Color.Black,
+                                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                                        indicatorColor = FuelAmber,
+                                        unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                        unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
+                                )
+                            }
+                        }
+                    }
                 }
             ) { paddingValues ->
                 Box(
@@ -1144,33 +1220,132 @@ fun AdminDashboardMainView(
                         .fillMaxSize()
                         .padding(paddingValues)
                 ) {
-                    // Safe Area margins
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        when (currentScreen) {
-                            AppScreen.Dashboard -> AdminDashboardView(viewModel, { onScreenChange(AppScreen.POS) })
-                            AppScreen.POS -> POSRegisterView(viewModel)
-                            AppScreen.Fuel -> FuelManagementView(viewModel)
-                            AppScreen.Pumps -> PumpStatusView(viewModel)
-                            AppScreen.Employees -> EmployeesDirectoryView(viewModel)
-                            AppScreen.Customers -> CustomerLoyaltyView(viewModel)
-                            AppScreen.Reports -> AnalyticalReportsView(viewModel)
-                            AppScreen.Settings -> SystemSettingsView(viewModel)
-                            AppScreen.Profile -> UserProfileView(viewModel, { onScreenChange(AppScreen.Landing) })
-                            else -> Unit
-                        }
+                    when (currentScreen) {
+                        AppScreen.Dashboard -> AdminDashboardView(viewModel, { onScreenChange(AppScreen.POS) })
+                        AppScreen.POS -> POSRegisterView(viewModel)
+                        AppScreen.Fuel -> FuelManagementView(viewModel)
+                        AppScreen.Pumps -> PumpStatusView(viewModel)
+                        AppScreen.Employees -> EmployeesDirectoryView(viewModel)
+                        AppScreen.Customers -> CustomerLoyaltyView(viewModel)
+                        AppScreen.Reports -> AnalyticalReportsView(viewModel)
+                        AppScreen.Settings -> SystemSettingsView(viewModel)
+                        AppScreen.Profile -> UserProfileView(viewModel, { onScreenChange(AppScreen.Landing) })
+                        else -> Unit
                     }
                 }
             }
         }
-        
-        // Touch overlay to dismiss menu drawer
-        if (drawerState.value) {
+
+        // CUSTOM "MORE OPTIONS" SHEET & OVERLAY DIALOG (Responsive & Interactive)
+        if (isMoreMenuOpen.value) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.4f))
-                    .clickable { drawerState.value = false }
-            )
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable { isMoreMenuOpen.value = false },
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                // Interactive bottom card acting like a Material design sheet popup
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth(if (isTablet) 0.5f else 1f)
+                        .padding(bottom = if (isTablet) 24.dp else 0.dp)
+                        .clickable(enabled = false) {}, // Prevent dismiss click-throughs
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = if (isTablet) 24.dp else 0.dp, bottomEnd = if (isTablet) 24.dp else 0.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Operational Modules",
+                                fontWeight = FontWeight.Black,
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            IconButton(onClick = { isMoreMenuOpen.value = false }) {
+                                Icon(Icons.Default.Close, contentDescription = "Close menu")
+                            }
+                        }
+
+                        Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+
+                        val moreItems = listOf(
+                            Triple("Staff & Shifts Directory", AppScreen.Employees, Icons.Default.People),
+                            Triple("Customer Loyalty Club", AppScreen.Customers, Icons.Default.CardMembership),
+                            Triple("CSV Reports & Analytics", AppScreen.Reports, Icons.Default.BarChart),
+                            Triple("System Controls Setup", AppScreen.Settings, Icons.Default.Settings),
+                            Triple("Security User Profile", AppScreen.Profile, Icons.Default.Person)
+                        )
+
+                        // Render each item as an elegant row selection list with dynamic indicators
+                        moreItems.forEach { (label, screen, icon) ->
+                            val isSelected = currentScreen == screen
+                            Surface(
+                                onClick = {
+                                    onScreenChange(screen)
+                                    isMoreMenuOpen.value = false
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isSelected) FuelAmber.copy(alpha = 0.15f) else Color.Transparent,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = label,
+                                        tint = if (isSelected) FuelAmber else MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Text(
+                                        text = label,
+                                        fontSize = 13.sp,
+                                        fontWeight = if (isSelected) FontWeight.Black else FontWeight.Bold,
+                                        color = if (isSelected) FuelAmber else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+
+                        Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f))
+
+                        // Explicit Security Sign-out in list
+                        Button(
+                            onClick = {
+                                viewModel.performLogout()
+                                onScreenChange(AppScreen.Landing)
+                                isMoreMenuOpen.value = false
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.12f),
+                                contentColor = MaterialTheme.colorScheme.error
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.ExitToApp, contentDescription = "Sign Out", modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("TERMINATE SESSION", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -1305,7 +1480,6 @@ fun AdminSidebarContent(
 fun AdminTopAppBar(
     currentUser: User?,
     stationName: String,
-    onMenuClick: () -> Unit,
     unreadCount: Int,
     onProfileClick: () -> Unit,
     viewModel: FuelFlowViewModel
@@ -1320,8 +1494,13 @@ fun AdminTopAppBar(
             }
         },
         navigationIcon = {
-            IconButton(onClick = onMenuClick) {
-                Icon(Icons.Default.Menu, "Menu toggle")
+            Box(modifier = Modifier.padding(start = 12.dp, end = 4.dp)) {
+                Icon(
+                    imageVector = Icons.Default.LocalGasStation,
+                    contentDescription = null,
+                    tint = FuelAmber,
+                    modifier = Modifier.size(24.dp)
+                )
             }
         },
         actions = {
